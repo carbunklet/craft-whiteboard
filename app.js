@@ -1594,10 +1594,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Google Meet Add-on Session created.");
             showToast("Conectado ao Google Meet!");
 
-            // Create side panel client
-            if (typeof meetSession.createSidePanelClient === 'function') {
-                sidePanelClient = await meetSession.createSidePanelClient();
-                console.log("Meet Side Panel Client created.");
+            // Create side panel client (Mandatory for startActivity)
+            try {
+                if (typeof meetSession.createSidePanelClient === 'function') {
+                    sidePanelClient = await meetSession.createSidePanelClient();
+                    console.log("Meet Side Panel Client created.");
+                }
+            } catch (err) {
+                console.error("Error creating Side Panel Client:", err);
             }
 
             // Show main stage maximize button
@@ -1605,25 +1609,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnMainStage.style.display = 'inline-flex';
             }
 
-            const myDelegate = {
-                onCoDoingStateChanged: (newState) => {
-                    if (isBroadcasting) return; // Ignore echo back of own broadcasts
-                    
-                    try {
-                        const decoder = new TextDecoder();
-                        const stateString = decoder.decode(newState);
-                        const state = JSON.parse(stateString);
+            // Create Co-Doing Client (Optional, as it might fail due to EAP enrollment restriction)
+            try {
+                const myDelegate = {
+                    onCoDoingStateChanged: (newState) => {
+                        if (isBroadcasting) return; // Ignore echo back of own broadcasts
                         
-                        console.log("Meet State received: ", state);
-                        applyMeetState(state);
-                    } catch (err) {
-                        console.error("Error decoding Meet sync state:", err);
+                        try {
+                            const decoder = new TextDecoder();
+                            const stateString = decoder.decode(newState);
+                            const state = JSON.parse(stateString);
+                            
+                            console.log("Meet State received: ", state);
+                            applyMeetState(state);
+                        } catch (err) {
+                            console.error("Error decoding Meet sync state:", err);
+                        }
                     }
-                }
-            };
+                };
 
-            coDoingClient = await meetSession.createCoDoingClient(myDelegate);
-            console.log("Meet Co-Doing client successfully initialized.");
+                coDoingClient = await meetSession.createCoDoingClient(myDelegate);
+                console.log("Meet Co-Doing client successfully initialized.");
+            } catch (coDoingErr) {
+                console.warn("Co-Doing client could not be created (this features requires Google Meet EAP enrollment).", coDoingErr);
+            }
         } catch (e) {
             console.warn("Could not create Meet Add-on Session (standard web mode).", e);
         }
