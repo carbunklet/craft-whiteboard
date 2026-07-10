@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadro Branco Interativo - CraftBoard</title>
+    <!-- Google Fonts: Outfit for premium modern feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for clean, beautiful vector UI icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PDF.js library for rendering PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    </script>
+    <!-- Google Meet Add-ons SDK -->
+    <script src="https://www.gstatic.com/meetjs/addons/1.1.0/meet.addons.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+    <!-- App Container -->
+    <div class="app-container">
+        
+        <!-- Canvas Workspace Area -->
+        <div class="workspace" id="workspace">
+            <!-- Slide Navigation Controls (floating top center, hidden by default) -->
+            <div class="slide-controls" id="slide-controls" style="display: none;">
+                <button class="slide-btn" id="btn-prev-slide" title="Slide Anterior (Seta Esquerda / PageUp)">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <span class="slide-indicator" id="slide-indicator">Slide 1 de 10</span>
+                <button class="slide-btn" id="btn-next-slide" title="Próximo Slide (Seta Direita / PageDown / Espaço)">
+                    <i data-lucide="chevron-right"></i>
+                </button>
+                <div class="slide-divider"></div>
+                <button class="slide-btn btn-danger-text" id="btn-close-pdf" title="Fechar PDF e Voltar ao Quadro Branco">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <div class="canvas-wrapper dots-grid" id="canvas-wrapper">
+                <canvas id="pdf-canvas"></canvas>
+                <canvas id="paint-canvas"></canvas>
+                <!-- Interactive Overlay for Text Boxes and interactive elements -->
+                <div id="interactive-overlay" class="interactive-overlay"></div>
+            </div>
+        </div>
+
+        <!-- Floating ToolBar (Figma / Apple Notes style) -->
+        <nav class="toolbar-floating" id="main-toolbar">
+            <!-- Tool: Select / Pointer -->
+            <button class="tool-btn active" id="tool-select" data-tool="select" title="Selecionar e Mover (V)">
+                <i data-lucide="mouse-pointer"></i>
+                <span class="tooltip">Mover</span>
+            </button>
+            
+            <div class="divider"></div>
+
+            <!-- Tool: Pencil -->
+            <button class="tool-btn" id="tool-pencil" data-tool="pencil" title="Lápis (P)">
+                <i data-lucide="pencil"></i>
+                <span class="tooltip">Lápis</span>
+            </button>
+
+            <!-- Tool: Highlighter -->
+            <button class="tool-btn" id="tool-highlighter" data-tool="highlighter" title="Marca-texto (H)">
+                <i data-lucide="highlighter"></i>
+                <span class="tooltip">Marca-texto</span>
+            </button>
+
+            <!-- Tool: Text Box -->
+            <button class="tool-btn" id="tool-text" data-tool="text" title="Caixa de Texto (T)">
+                <i data-lucide="type"></i>
+                <span class="tooltip">Texto</span>
+            </button>
+
+            <!-- Tool: Eraser -->
+            <button class="tool-btn" id="tool-eraser" data-tool="eraser" title="Borracha (E)">
+                <i data-lucide="eraser"></i>
+                <span class="tooltip">Borracha</span>
+            </button>
+            
+            <div class="divider"></div>
+
+            <!-- Active Color Preview & Quick Palette Trigger -->
+            <div class="color-picker-wrapper">
+                <button class="color-preview-btn" id="color-preview-btn" title="Cor do Traço">
+                    <span class="color-bubble" id="active-color-bubble"></span>
+                </button>
+                <!-- Popover Panel for Colors and Brush Size -->
+                <div class="popover-panel" id="brush-popover">
+                    <div class="popover-section">
+                        <h4>Cores Rápidas</h4>
+                        <div class="color-palette" id="color-palette">
+                            <!-- Preset colors injected by JS -->
+                        </div>
+                        <div class="custom-color-row">
+                            <label for="custom-color">Cor personalizada:</label>
+                            <input type="color" id="custom-color" value="#6366f1">
+                        </div>
+                    </div>
+                    <div class="popover-section">
+                        <div class="slider-header">
+                            <h4>Espessura Lápis</h4>
+                            <span id="thickness-val">5px</span>
+                        </div>
+                        <input type="range" id="brush-thickness" min="2" max="60" value="5">
+                        <div class="brush-size-preview">
+                            <div id="size-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Font Size Selector Button & Popover -->
+            <div class="font-size-wrapper">
+                <button class="font-size-btn" id="font-size-toolbar-btn" title="Tamanho da Fonte">
+                    <span id="font-size-indicator">20</span>
+                </button>
+                <!-- Font size list popover -->
+                <div class="popover-panel font-size-popover" id="font-size-popover">
+                    <div class="popover-section">
+                        <h4>Tamanho do Texto</h4>
+                        <div class="font-size-presets">
+                            <button class="size-preset-btn" data-size="14">14</button>
+                            <button class="size-preset-btn" data-size="18">18</button>
+                            <button class="size-preset-btn" data-size="24">24</button>
+                            <button class="size-preset-btn" data-size="32">32</button>
+                            <button class="size-preset-btn" data-size="48">48</button>
+                            <button class="size-preset-btn" data-size="64">64</button>
+                        </div>
+                        <div class="custom-size-row">
+                            <label for="custom-font-size">Personalizado:</label>
+                            <input type="range" id="custom-font-size" min="10" max="100" value="20">
+                            <span id="custom-font-size-val">20px</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Right Side Utility Control Panel -->
+        <div class="controls-panel">
+            <!-- Theme Toggle -->
+            <button class="control-btn" id="btn-theme" title="Alternar Modo Escuro/Claro">
+                <i data-lucide="moon" id="theme-icon"></i>
+            </button>
+
+            <!-- Grid Toggle -->
+            <button class="control-btn active" id="btn-grid" title="Alternar Grade de Pontos">
+                <i data-lucide="grid"></i>
+            </button>
+            
+            <div class="vertical-divider"></div>
+
+            <!-- Undo -->
+            <button class="control-btn" id="btn-undo" title="Desfazer (Ctrl+Z)" disabled>
+                <i data-lucide="undo-2"></i>
+            </button>
+
+            <!-- Redo -->
+            <button class="control-btn" id="btn-redo" title="Refazer (Ctrl+Y)" disabled>
+                <i data-lucide="redo-2"></i>
+            </button>
+
+            <div class="vertical-divider"></div>
+
+            <!-- Clear -->
+            <button class="control-btn btn-danger" id="btn-clear" title="Limpar Tudo">
+                <i data-lucide="trash-2"></i>
+            </button>
+
+            <!-- Export / Save -->
+            <button class="control-btn btn-success" id="btn-export" title="Exportar como PNG">
+                <i data-lucide="download"></i>
+            </button>
+
+            <div class="vertical-divider"></div>
+
+            <!-- Open PDF -->
+            <button class="control-btn btn-success" id="btn-open-pdf" title="Abrir PDF" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
+                <i data-lucide="file-up"></i>
+            </button>
+            <input type="file" id="pdf-file-input" accept="application/pdf" style="display: none;">
+        </div>
+
+        <!-- Brand Logo Watermark -->
+        <div class="brand-watermark">
+            <span class="logo-text">CraftBoard</span>
+            <span class="logo-sub">Quadro Interativo</span>
+        </div>
+        
+        <!-- Status Indicator / Toast -->
+        <div class="toast" id="toast">Ação realizada com sucesso!</div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
