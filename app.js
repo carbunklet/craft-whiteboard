@@ -1563,7 +1563,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            meetSession = await addonsApi.createAddonSession();
+            meetSession = await addonsApi.createAddonSession({
+                cloudProjectNumber: "159749600102"
+            });
             console.log("Google Meet Add-on Session created.");
             showToast("Conectado ao Google Meet!");
 
