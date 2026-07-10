@@ -50,6 +50,14 @@
 
         <!-- Floating ToolBar (Figma / Apple Notes style) -->
         <nav class="toolbar-floating" id="main-toolbar">
+            <!-- Tool: Hand / Pan -->
+            <button class="tool-btn" id="tool-hand" data-tool="hand" title="Mão / Navegar (H)">
+                <i data-lucide="hand"></i>
+                <span class="tooltip">Mão</span>
+            </button>
+            
+            <div class="divider"></div>
+
             <!-- Tool: Select / Pointer -->
             <button class="tool-btn active" id="tool-select" data-tool="select" title="Selecionar e Mover (V)">
                 <i data-lucide="mouse-pointer"></i>
@@ -65,7 +73,7 @@
             </button>
 
             <!-- Tool: Highlighter -->
-            <button class="tool-btn" id="tool-highlighter" data-tool="highlighter" title="Marca-texto (H)">
+            <button class="tool-btn" id="tool-highlighter" data-tool="highlighter" title="Marca-texto (G)">
                 <i data-lucide="highlighter"></i>
                 <span class="tooltip">Marca-texto</span>
             </button>
@@ -194,6 +202,19 @@
                 <i data-lucide="file-up"></i>
             </button>
             <input type="file" id="pdf-file-input" accept="application/pdf" style="display: none;">
+        </div>
+
+        <!-- Zoom Controls Panel -->
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="btn-zoom-out" title="Diminuir Zoom">
+                <i data-lucide="minus"></i>
+            </button>
+            <button class="zoom-indicator-btn" id="btn-zoom-reset" title="Restaurar Zoom (100%)">
+                <span id="zoom-text">100%</span>
+            </button>
+            <button class="zoom-btn" id="btn-zoom-in" title="Aumentar Zoom">
+                <i data-lucide="plus"></i>
+            </button>
         </div>
 
         <!-- Brand Logo Watermark -->

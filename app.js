@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const overlay = document.getElementById('interactive-overlay');
     
     // Tools
+    const toolHand = document.getElementById('tool-hand');
     const toolSelect = document.getElementById('tool-select');
     const toolPencil = document.getElementById('tool-pencil');
     const toolHighlighter = document.getElementById('tool-highlighter');
@@ -56,6 +57,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLockBoard = document.getElementById('btn-lock-board');
     const lockIcon = document.getElementById('lock-icon');
     const btnMainStage = document.getElementById('btn-main-stage');
+
+    // Zoom Controls
+    const btnZoomIn = document.getElementById('btn-zoom-in');
+    const btnZoomOut = document.getElementById('btn-zoom-out');
+    const btnZoomReset = document.getElementById('btn-zoom-reset');
+    const zoomText = document.getElementById('zoom-text');
     
     // Toast
     const toast = document.getElementById('toast');
@@ -90,6 +97,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let broadcastTimeout = null;
     let isBoardLocked = false;
     let isTeacher = true; // True for meeting host/teacher, becomes false for students receiving remote states
+    
+    // Zoom & Pan State
+    let zoomScale = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let isSpacePressed = false;
     
     // Undo/Redo & Undo Stack (canvas drawing snapshot + text boxes state)
     let undoStack = [];
@@ -134,11 +150,12 @@ document.addEventListener('DOMContentLoaded', () => {
         canvasWrapper.style.height = '100%';
         canvasWrapper.style.position = 'absolute';
 
-        const rect = canvasWrapper.getBoundingClientRect();
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
         const dpr = window.devicePixelRatio || 1;
         
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
         
         ctx.scale(dpr, dpr);
         ctx.lineCap = 'round';
@@ -293,6 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tool Selection Event Listeners
     const tools = [
+        { btn: toolHand, id: 'hand' },
         { btn: toolSelect, id: 'select' },
         { btn: toolPencil, id: 'pencil' },
         { btn: toolHighlighter, id: 'highlighter' },
@@ -314,9 +332,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const key = e.key.toLowerCase();
-        if (key === 'v') selectTool('select');
+        if (key === 'h') selectTool('hand');
+        else if (key === 'v') selectTool('select');
         else if (key === 'p') selectTool('pencil');
-        else if (key === 'h') selectTool('highlighter');
+        else if (key === 'g') selectTool('highlighter');
         else if (key === 't') selectTool('text');
         else if (key === 'e') selectTool('eraser');
         else if (e.ctrlKey && key === 'z') {
@@ -329,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function selectTool(toolId) {
-        if (isBoardLocked && !isTeacher && toolId !== 'select') {
+        if (isBoardLocked && !isTeacher && toolId !== 'select' && toolId !== 'hand') {
             showToast("O professor bloqueou o quadro!", true);
             selectTool('select');
             return;
@@ -345,13 +364,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Manage overlay clickability
-        if (activeTool === 'select') {
+        if (activeTool === 'select' || activeTool === 'text' || activeTool === 'hand') {
             overlay.style.pointerEvents = 'auto';
-        } else if (activeTool === 'text') {
-            overlay.style.pointerEvents = 'auto';
-            deselectAllTextBoxes();
-            selectedStroke = null;
-            redrawAllStrokes();
+            if (activeTool === 'text') {
+                deselectAllTextBoxes();
+                selectedStroke = null;
+                redrawAllStrokes();
+            }
         } else {
             overlay.style.pointerEvents = 'none'; // Drawing passes through to canvas
             deselectAllTextBoxes();
@@ -365,15 +384,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateCursorClass() {
         // Reset classes
-        workspace.classList.remove('cursor-select', 'cursor-pencil', 'cursor-highlighter', 'cursor-text', 'cursor-eraser');
+        workspace.classList.remove('cursor-select', 'cursor-pencil', 'cursor-highlighter', 'cursor-text', 'cursor-eraser', 'cursor-hand', 'cursor-hand-grab');
         // Add current tool class
-        workspace.classList.add(`cursor-${activeTool}`);
+        if (activeTool === 'hand' || isSpacePressed) {
+            workspace.classList.add('cursor-hand');
+        } else {
+            workspace.classList.add(`cursor-${activeTool}`);
+        }
     }
 
     // DRAWING LOGIC (Canvas mouse & touch events)
 
     function getCoords(e) {
-        const rect = canvas.getBoundingClientRect();
+        const rect = canvasWrapper.getBoundingClientRect();
         let clientX, clientY;
         
         if (e.touches && e.touches.length > 0) {
@@ -384,10 +407,11 @@ document.addEventListener('DOMContentLoaded', () => {
             clientY = e.clientY;
         }
 
-        return {
-            x: clientX - rect.left,
-            y: clientY - rect.top
-        };
+        // Map client coordinates back to unscaled canvas wrapper space
+        const localX = (clientX - rect.left) / zoomScale;
+        const localY = (clientY - rect.top) / zoomScale;
+
+        return { x: localX, y: localY };
     }
 
     function startDrawing(e) {
@@ -475,48 +499,78 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Canvas Events
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseleave', stopDrawing);
+    canvas.addEventListener('mousedown', (e) => {
+        if (activeTool === 'hand' || isSpacePressed || e.button === 1) {
+            startPanning(e);
+        } else {
+            startDrawing(e);
+        }
+    });
+    canvas.addEventListener('mousemove', (e) => {
+        if (isPanning) {
+            pan(e);
+        } else {
+            draw(e);
+        }
+    });
+    canvas.addEventListener('mouseup', () => {
+        stopPanning();
+        stopDrawing();
+    });
+    canvas.addEventListener('mouseleave', () => {
+        stopPanning();
+        stopDrawing();
+    });
 
     // Touch Events
     canvas.addEventListener('touchstart', (e) => {
-        // Prevent default scrolling on mobile when drawing
-        if (activeTool !== 'select' && activeTool !== 'text') {
+        if (activeTool === 'hand') {
             e.preventDefault();
+            startPanning(e);
+        } else if (activeTool !== 'select' && activeTool !== 'text') {
+            e.preventDefault();
+            startDrawing(e);
         }
-        startDrawing(e);
     });
     canvas.addEventListener('touchmove', (e) => {
-        if (activeTool !== 'select' && activeTool !== 'text') {
+        if (isPanning) {
             e.preventDefault();
+            pan(e);
+        } else if (activeTool !== 'select' && activeTool !== 'text') {
+            e.preventDefault();
+            draw(e);
         }
-        draw(e);
     });
-    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchend', () => {
+        stopPanning();
+        stopDrawing();
+    });
 
 
     // TEXT BOX LOGIC
 
     // Click on overlay to spawn a Text Box or select a stroke
     overlay.addEventListener('mousedown', (e) => {
+        if (activeTool === 'hand' || isSpacePressed || e.button === 1) {
+            startPanning(e);
+            return;
+        }
         if (activeTool === 'text') {
             if (isBoardLocked && !isTeacher) {
                 showToast("Quadro bloqueado pelo professor!", true);
                 return;
             }
             const rect = overlay.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const x = (e.clientX - rect.left) / zoomScale;
+            const y = (e.clientY - rect.top) / zoomScale;
 
             createTextBox(x, y - 10, "", true);
             // Revert back to Select Tool after creating a text box for easier styling/manipulation
             selectTool('select');
         } else if (activeTool === 'select') {
             const rect = overlay.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const x = (e.clientX - rect.left) / zoomScale;
+            const y = (e.clientY - rect.top) / zoomScale;
             
             // Check if click hits a stroke
             const stroke = findStrokeAt(x, y);
@@ -772,8 +826,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Globals for moving active box
     document.addEventListener('mousemove', (e) => {
         if (activeTextBoxDrag && activeTool === 'select') {
-            const dx = e.clientX - dragStartX;
-            const dy = e.clientY - dragStartY;
+            const dx = (e.clientX - dragStartX) / zoomScale;
+            const dy = (e.clientY - dragStartY) / zoomScale;
             
             const newX = dragStartLeft + dx;
             const newY = dragStartTop + dy;
@@ -805,8 +859,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchmove', (e) => {
         if (activeTextBoxDrag && activeTool === 'select' && e.touches.length > 0) {
             const touch = e.touches[0];
-            const dx = touch.clientX - dragStartX;
-            const dy = touch.clientY - dragStartY;
+            const dx = (touch.clientX - dragStartX) / zoomScale;
+            const dy = (touch.clientY - dragStartY) / zoomScale;
             
             const newX = dragStartLeft + dx;
             const newY = dragStartTop + dy;
@@ -1797,6 +1851,142 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // ==========================================
+    // ZOOM & PANNING OPERATIONS
+    // ==========================================
+
+    function startPanning(e) {
+        isPanning = true;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        panStartX = clientX - panX;
+        panStartY = clientY - panY;
+        
+        workspace.classList.remove('cursor-hand');
+        workspace.classList.add('cursor-hand-grab');
+    }
+
+    function pan(e) {
+        if (!isPanning) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        panX = clientX - panStartX;
+        panY = clientY - panStartY;
+        applyZoomPanTransform();
+    }
+
+    function stopPanning() {
+        if (isPanning) {
+            isPanning = false;
+            workspace.classList.remove('cursor-hand-grab');
+            if (activeTool === 'hand' || isSpacePressed) {
+                workspace.classList.add('cursor-hand');
+            }
+        }
+    }
+
+    function applyZoomPanTransform() {
+        canvasWrapper.style.setProperty('--zoom', zoomScale);
+        canvasWrapper.style.setProperty('--pan-x', `${panX}px`);
+        canvasWrapper.style.setProperty('--pan-y', `${panY}px`);
+    }
+
+    function updateZoomDisplay() {
+        if (zoomText) {
+            zoomText.textContent = `${Math.round(zoomScale * 100)}%`;
+        }
+    }
+
+    // Zoom Button Listeners
+    if (btnZoomIn) {
+        btnZoomIn.addEventListener('click', () => {
+            zoomScale = Math.min(zoomScale + 0.1, 4.0);
+            applyZoomPanTransform();
+            updateZoomDisplay();
+        });
+    }
+
+    if (btnZoomOut) {
+        btnZoomOut.addEventListener('click', () => {
+            zoomScale = Math.max(zoomScale - 0.1, 0.2);
+            applyZoomPanTransform();
+            updateZoomDisplay();
+        });
+    }
+
+    if (btnZoomReset) {
+        btnZoomReset.addEventListener('click', () => {
+            zoomScale = 1.0;
+            panX = 0;
+            panY = 0;
+            applyZoomPanTransform();
+            updateZoomDisplay();
+        });
+    }
+
+    // Ctrl + Scroll Wheel Zoom
+    canvasWrapper.addEventListener('wheel', (e) => {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const zoomFactor = 1.08;
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
+            // Get mouse position relative to wrapper before zoom
+            const rect = canvasWrapper.getBoundingClientRect();
+            const localX = (mouseX - rect.left) / zoomScale;
+            const localY = (mouseY - rect.top) / zoomScale;
+            
+            // Calculate new zoom
+            let newZoom = zoomScale;
+            if (e.deltaY < 0) {
+                newZoom = Math.min(newZoom * zoomFactor, 4.0);
+            } else {
+                newZoom = Math.max(newZoom / zoomFactor, 0.2);
+            }
+            
+            // Adjust pan to zoom into mouse cursor
+            panX = mouseX - localX * newZoom;
+            panY = mouseY - localY * newZoom;
+            
+            zoomScale = newZoom;
+            applyZoomPanTransform();
+            updateZoomDisplay();
+        }
+    }, { passive: false });
+
+    // Smooth document-level drag for panning
+    document.addEventListener('mousemove', (e) => {
+        if (isPanning) {
+            pan(e);
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        stopPanning();
+    });
+
+    // Spacebar temporary hand tool trigger
+    document.addEventListener('keydown', (e) => {
+        if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') {
+            return;
+        }
+        if (e.key === ' ' && !isSpacePressed) {
+            isSpacePressed = true;
+            workspace.classList.remove('cursor-select', 'cursor-pencil', 'cursor-highlighter', 'cursor-text', 'cursor-eraser');
+            workspace.classList.add('cursor-hand');
+            e.preventDefault();
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.key === ' ') {
+            isSpacePressed = false;
+            workspace.classList.remove('cursor-hand', 'cursor-hand-grab');
+            updateCursorClass();
+        }
+    });
 
     // Initialize Meet SDK
     initMeetAddon();

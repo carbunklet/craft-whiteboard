@@ -106,6 +106,8 @@ body.theme-light {
     width: 100%;
     height: 100%;
     transition: background 0.3s ease;
+    transform-origin: 0 0;
+    transform: translate(var(--pan-x, 0px), var(--pan-y, 0px)) scale(var(--zoom, 1));
 }
 
 /* Dots Grid Pattern with CSS Grid */
@@ -872,4 +874,95 @@ body.theme-light .size-preset-btn {
     .slide-indicator {
         font-size: 11px;
     }
+}
+
+/* Zoom Controls Panel */
+.zoom-controls {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    box-shadow: var(--shadow-glass);
+    z-index: 100;
+}
+
+@media (max-width: 480px) {
+    .zoom-controls {
+        bottom: 12px;
+        left: 12px;
+        padding: 4px;
+    }
+}
+
+.zoom-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.zoom-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+body.theme-light .zoom-btn:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.zoom-btn i {
+    width: 16px;
+    height: 16px;
+}
+
+.zoom-indicator-btn {
+    padding: 0 8px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    transition: all 0.2s;
+    min-width: 50px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.zoom-indicator-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+body.theme-light .zoom-indicator-btn:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+/* Hand & Pan cursors */
+.cursor-hand {
+    cursor: grab !important;
+}
+
+.cursor-hand-grab {
+    cursor: grabbing !important;
+}
+
+.workspace.cursor-hand #interactive-overlay,
+.workspace.cursor-hand-grab #interactive-overlay {
+    pointer-events: auto !important; /* Enable overlay click for panning drag events */
 }
