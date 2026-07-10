@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lock Control
     const btnLockBoard = document.getElementById('btn-lock-board');
     const lockIcon = document.getElementById('lock-icon');
+    const btnMainStage = document.getElementById('btn-main-stage');
     
     // Toast
     const toast = document.getElementById('toast');
@@ -1592,6 +1593,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Google Meet Add-on Session created.");
             showToast("Conectado ao Google Meet!");
 
+            // Show main stage maximize button
+            if (btnMainStage) {
+                btnMainStage.style.display = 'inline-flex';
+            }
+
             const myDelegate = {
                 onCoDoingStateChanged: (newState) => {
                     if (isBroadcasting) return; // Ignore echo back of own broadcasts
@@ -1755,6 +1761,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Refresh icons since we modified data-lucide attribute
         lucide.createIcons();
+    }
+
+    // Expand to Main Stage click listener
+    if (btnMainStage) {
+        btnMainStage.addEventListener('click', async () => {
+            if (meetSession) {
+                try {
+                    await meetSession.startActivity({
+                        mainStageUrl: "https://carbunklet.github.io/craft-whiteboard/"
+                    });
+                    showToast("Abrindo na tela central...");
+                } catch (err) {
+                    console.error("Error starting main stage activity:", err);
+                    showToast("Erro ao abrir na tela central", true);
+                }
+            } else {
+                showToast("Meet Session não iniciada", true);
+            }
+        });
     }
 
     // Initialize Meet SDK
