@@ -426,12 +426,13 @@ document.addEventListener('DOMContentLoaded', () => {
         lastX = coords.x;
         lastY = coords.y;
 
-        const rect = canvasWrapper.getBoundingClientRect();
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
         currentStrokePoints = [{
             x: lastX,
             y: lastY,
-            xPct: lastX / (rect.width || 1),
-            yPct: lastY / (rect.height || 1)
+            xPct: lastX / width,
+            yPct: lastY / height
         }];
 
         // Context drawing settings
@@ -459,13 +460,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isDrawing) return;
         
         const coords = getCoords(e);
-        const rect = canvasWrapper.getBoundingClientRect();
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
         
         currentStrokePoints.push({
             x: coords.x,
             y: coords.y,
-            xPct: coords.x / (rect.width || 1),
-            yPct: coords.y / (rect.height || 1)
+            xPct: coords.x / width,
+            yPct: coords.y / height
         });
 
         // Draw segment
@@ -605,14 +607,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const uniqueId = id || 'text-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
         const finalColor = color || activeColor;
         const finalFontSize = fontSize || `${activeFontSize}px`;
-        const rect = canvasWrapper.getBoundingClientRect();
-
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
+ 
         // Compute actual pixels from percentages if provided
-        const actualX = xPct !== null ? (xPct * rect.width) : x;
-        const actualY = yPct !== null ? (yPct * rect.height) : y;
+        const actualX = xPct !== null ? (xPct * width) : x;
+        const actualY = yPct !== null ? (yPct * height) : y;
         
-        const finalXPct = xPct !== null ? xPct : (x / (rect.width || 1));
-        const finalYPct = yPct !== null ? yPct : (y / (rect.height || 1));
+        const finalXPct = xPct !== null ? xPct : (x / (width || 1));
+        const finalYPct = yPct !== null ? yPct : (y / (height || 1));
 
         // DOM element
         const tbDiv = document.createElement('div');
@@ -841,9 +844,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tb) {
                 tb.x = newX;
                 tb.y = newY;
-                const rect = canvasWrapper.getBoundingClientRect();
-                tb.xPct = newX / (rect.width || 1);
-                tb.yPct = newY / (rect.height || 1);
+                const width = canvasWrapper.offsetWidth || 800;
+                const height = canvasWrapper.offsetHeight || 600;
+                tb.xPct = newX / (width || 1);
+                tb.yPct = newY / (height || 1);
             }
         }
     });
@@ -873,9 +877,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tb) {
                 tb.x = newX;
                 tb.y = newY;
-                const rect = canvasWrapper.getBoundingClientRect();
-                tb.xPct = newX / (rect.width || 1);
-                tb.yPct = newY / (rect.height || 1);
+                const width = canvasWrapper.offsetWidth || 800;
+                const height = canvasWrapper.offsetHeight || 600;
+                tb.xPct = newX / (width || 1);
+                tb.yPct = newY / (height || 1);
             }
         }
     });
@@ -891,7 +896,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // UNDO / REDO HISTORY STACK
 
     function saveState() {
-        const rect = canvasWrapper.getBoundingClientRect();
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
         
         // Deep copy strokes
         const strokesCopy = strokes.map(s => ({
@@ -901,8 +907,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Deep copy textBoxes list with percentage coordinates
         const textBoxesCopy = textBoxes.map(t => {
-            const xPct = t.xPct !== undefined ? t.xPct : (t.x / (rect.width || 1));
-            const yPct = t.yPct !== undefined ? t.yPct : (t.y / (rect.height || 1));
+            const xPct = t.xPct !== undefined ? t.xPct : (t.x / (width || 1));
+            const yPct = t.yPct !== undefined ? t.yPct : (t.y / (height || 1));
             return {
                 ...t,
                 xPct: xPct,
@@ -928,10 +934,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Restore Text Boxes DOM
         document.querySelectorAll('.text-box-container').forEach(tb => tb.remove());
         
-        const rect = canvasWrapper.getBoundingClientRect();
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
         textBoxes = state.textBoxes.map(t => {
-            const x = t.xPct !== undefined ? (t.xPct * rect.width) : t.x;
-            const y = t.yPct !== undefined ? (t.yPct * rect.height) : t.y;
+            const x = t.xPct !== undefined ? (t.xPct * width) : t.x;
+            const y = t.yPct !== undefined ? (t.yPct * height) : t.y;
             return {
                 ...t,
                 x: x,
@@ -1134,15 +1141,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save current page state helper
     function saveCurrentPageState() {
         if (!isPdfMode) return;
-        const rect = canvasWrapper.getBoundingClientRect();
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
         pageStates[currentPdfPage] = {
             strokes: strokes.map(s => ({
                 ...s,
                 points: s.points.map(p => ({ ...p }))
             })),
             textBoxes: textBoxes.map(t => {
-                const xPct = t.xPct !== undefined ? t.xPct : (t.x / (rect.width || 1));
-                const yPct = t.yPct !== undefined ? t.yPct : (t.y / (rect.height || 1));
+                const xPct = t.xPct !== undefined ? t.xPct : (t.x / (width || 1));
+                const yPct = t.yPct !== undefined ? t.yPct : (t.y / (height || 1));
                 return { ...t, xPct, yPct };
             }),
             undoStack: [...undoStack],
@@ -1218,7 +1226,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.text-box-container').forEach(tb => tb.remove());
         selectedStroke = null;
         
-        const rect = canvasWrapper.getBoundingClientRect();
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
         
         if (pageStates[pageNum]) {
             const state = pageStates[pageNum];
@@ -1227,8 +1236,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 points: s.points.map(p => ({ ...p }))
             }));
             textBoxes = state.textBoxes.map(t => {
-                const x = t.xPct !== undefined ? (t.xPct * rect.width) : t.x;
-                const y = t.yPct !== undefined ? (t.yPct * rect.height) : t.y;
+                const x = t.xPct !== undefined ? (t.xPct * width) : t.x;
+                const y = t.yPct !== undefined ? (t.yPct * height) : t.y;
                 return { ...t, x, y };
             });
             undoStack = [...state.undoStack];
@@ -1391,15 +1400,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(pdf => {
                     // Save standard whiteboard state if not already in PDF mode
                     if (!isPdfMode) {
-                        const rect = canvasWrapper.getBoundingClientRect();
+                        const width = canvasWrapper.offsetWidth || 800;
+                        const height = canvasWrapper.offsetHeight || 600;
                         whiteboardBackupState = {
                             strokes: strokes.map(s => ({
                                 ...s,
                                 points: s.points.map(p => ({ ...p }))
                             })),
                             textBoxes: textBoxes.map(t => {
-                                const xPct = t.xPct !== undefined ? t.xPct : (t.x / (rect.width || 1));
-                                const yPct = t.yPct !== undefined ? t.yPct : (t.y / (rect.height || 1));
+                                const xPct = t.xPct !== undefined ? t.xPct : (t.x / (width || 1));
+                                const yPct = t.yPct !== undefined ? t.yPct : (t.y / (height || 1));
                                 return { ...t, xPct, yPct };
                             }),
                             undoStack: [...undoStack],
@@ -1462,14 +1472,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (whiteboardBackupState) {
             const state = whiteboardBackupState;
-            const rect = canvasWrapper.getBoundingClientRect();
+            const width = canvasWrapper.offsetWidth || 800;
+            const height = canvasWrapper.offsetHeight || 600;
             strokes = state.strokes.map(s => ({
                 ...s,
                 points: s.points.map(p => ({ ...p }))
             }));
             textBoxes = state.textBoxes.map(t => {
-                const x = t.xPct * rect.width;
-                const y = t.yPct * rect.height;
+                const x = t.xPct * width;
+                const y = t.yPct * height;
                 return { ...t, x, y };
             });
             undoStack = [...state.undoStack];
@@ -1498,11 +1509,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Helper functions for vector coordinate scaling, click-detection, and distance formulas
     function scaleStrokesToPixels() {
-        const rect = canvasWrapper.getBoundingClientRect();
+        const width = canvasWrapper.offsetWidth || 800;
+        const height = canvasWrapper.offsetHeight || 600;
         strokes.forEach(stroke => {
             stroke.points.forEach(p => {
-                p.x = p.xPct * rect.width;
-                p.y = p.yPct * rect.height;
+                p.x = p.xPct * width;
+                p.y = p.yPct * height;
             });
         });
     }
