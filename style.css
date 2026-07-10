@@ -790,3 +790,86 @@ body.theme-light .size-preset-btn {
 .custom-size-row input {
     width: 100%;
 }
+
+/* Responsive adjustments for narrow screens (e.g. Google Meet Side Panel) */
+@media (max-width: 480px) {
+    .workspace {
+        padding: 4px;
+    }
+    
+    /* Shrink the floating toolbar */
+    .toolbar-floating {
+        padding: 6px 10px;
+        gap: 8px;
+        bottom: 12px;
+        border-radius: 16px;
+    }
+    
+    .tool-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+    }
+    
+    .tool-btn i {
+        width: 16px;
+        height: 16px;
+    }
+    
+    /* Hide tool text shortcuts on narrow screens */
+    .tool-btn::after {
+        display: none !important;
+    }
+    
+    /* Shrink the top actions toolbar */
+    .controls-panel {
+        top: 12px;
+        padding: 4px 8px;
+        gap: 6px;
+        border-radius: 12px;
+    }
+    
+    .control-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+    }
+    
+    .control-btn i {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .vertical-divider, .divider {
+        height: 14px;
+    }
+    
+    /* Adjust font size button */
+    .font-size-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 13px;
+    }
+    
+    .color-preview-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    /* Adjust slide controls */
+    .slide-controls {
+        top: 12px;
+        padding: 4px 8px;
+        gap: 6px;
+        border-radius: 12px;
+    }
+    
+    .slide-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .slide-indicator {
+        font-size: 11px;
+    }
+}

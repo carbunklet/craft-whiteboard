@@ -52,6 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const customFontSizeInput = document.getElementById('custom-font-size');
     const customFontSizeVal = document.getElementById('custom-font-size-val');
     
+    // Lock Control
+    const btnLockBoard = document.getElementById('btn-lock-board');
+    const lockIcon = document.getElementById('lock-icon');
+    
     // Toast
     const toast = document.getElementById('toast');
 
@@ -82,6 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let coDoingClient = null;
     let isBroadcasting = false; // Prevents infinite echo loops
     let broadcastTimeout = null;
+    let isBoardLocked = false;
+    let isTeacher = true; // True for meeting host/teacher, becomes false for students receiving remote states
     
     // Undo/Redo & Undo Stack (canvas drawing snapshot + text boxes state)
     let undoStack = [];
@@ -321,6 +327,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function selectTool(toolId) {
+        if (isBoardLocked && !isTeacher && toolId !== 'select') {
+            showToast("O professor bloqueou o quadro!", true);
+            selectTool('select');
+            return;
+        }
         activeTool = toolId;
         
         tools.forEach(t => {
@@ -379,6 +390,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startDrawing(e) {
         if (activeTool === 'select' || activeTool === 'text') return;
+        if (isBoardLocked && !isTeacher) {
+            showToast("Quadro bloqueado pelo professor!", true);
+            return;
+        }
         
         isDrawing = true;
         const coords = getCoords(e);
@@ -485,6 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Click on overlay to spawn a Text Box or select a stroke
     overlay.addEventListener('mousedown', (e) => {
         if (activeTool === 'text') {
+            if (isBoardLocked && !isTeacher) {
+                showToast("Quadro bloqueado pelo professor!", true);
+                return;
+            }
             const rect = overlay.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
@@ -662,6 +681,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Double click to focus textarea in select mode
         tbDiv.addEventListener('dblclick', () => {
+            if (isBoardLocked && !isTeacher) {
+                showToast("Quadro bloqueado pelo professor!", true);
+                return;
+            }
             textarea.focus();
         });
 
@@ -1606,7 +1629,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 strokes: strokes,
                 textBoxes: textBoxes,
                 undoStack: undoStack,
-                redoStack: redoStack
+                redoStack: redoStack,
+                isBoardLocked: isBoardLocked
             };
             
             const encoder = new TextEncoder();
@@ -1634,6 +1658,16 @@ document.addEventListener('DOMContentLoaded', () => {
         isBroadcasting = true;
         
         try {
+            // Since we are applying a remote state, we are a student participant!
+            isTeacher = false;
+            btnLockBoard.disabled = true; // disable lock toggle for students
+            btnLockBoard.title = "Quadro bloqueado pelo professor";
+            
+            if (state.isBoardLocked !== undefined) {
+                isBoardLocked = state.isBoardLocked;
+                updateLockUI();
+            }
+
             if (state.isPdfMode) {
                 // If remote entered PDF mode, match it
                 isPdfMode = true;
@@ -1686,6 +1720,41 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             isBroadcasting = false;
         }
+    }
+
+    // Lock/Unlock Board click event
+    btnLockBoard.addEventListener('click', () => {
+        if (!isTeacher) {
+            showToast("Apenas o professor pode alterar o bloqueio do quadro!", true);
+            return;
+        }
+        
+        isBoardLocked = !isBoardLocked;
+        updateLockUI();
+        
+        // Sync update with other participants in Google Meet
+        broadcastCurrentState();
+    });
+
+    function updateLockUI() {
+        if (isBoardLocked) {
+            lockIcon.setAttribute('data-lucide', 'lock');
+            btnLockBoard.title = "Desbloquear Edição dos Alunos";
+            btnLockBoard.classList.add('btn-danger-text');
+            showToast("Quadro bloqueado para alunos!");
+            
+            // If local user is a student, force them to select tool
+            if (!isTeacher) {
+                selectTool('select');
+            }
+        } else {
+            lockIcon.setAttribute('data-lucide', 'unlock');
+            btnLockBoard.title = "Bloquear Edição dos Alunos";
+            btnLockBoard.classList.remove('btn-danger-text');
+            showToast("Quadro desbloqueado para todos!");
+        }
+        // Refresh icons since we modified data-lucide attribute
+        lucide.createIcons();
     }
 
     // Initialize Meet SDK
