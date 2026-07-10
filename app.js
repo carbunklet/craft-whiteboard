@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Google Meet Add-on State
     let meetSession = null;
     let coDoingClient = null;
+    let sidePanelClient = null;
     let isBroadcasting = false; // Prevents infinite echo loops
     let broadcastTimeout = null;
     let isBoardLocked = false;
@@ -1593,8 +1594,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Google Meet Add-on Session created.");
             showToast("Conectado ao Google Meet!");
 
+            // Create side panel client
+            if (typeof meetSession.createSidePanelClient === 'function') {
+                sidePanelClient = await meetSession.createSidePanelClient();
+                console.log("Meet Side Panel Client created.");
+            }
+
             // Show main stage maximize button
-            if (btnMainStage) {
+            if (btnMainStage && sidePanelClient) {
                 btnMainStage.style.display = 'inline-flex';
             }
 
@@ -1766,9 +1773,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expand to Main Stage click listener
     if (btnMainStage) {
         btnMainStage.addEventListener('click', async () => {
-            if (meetSession) {
+            if (sidePanelClient) {
                 try {
-                    await meetSession.startActivity({
+                    await sidePanelClient.startActivity({
                         mainStageUrl: "https://carbunklet.github.io/craft-whiteboard/"
                     });
                     showToast("Abrindo na tela central...");
@@ -1777,7 +1784,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast("Erro ao abrir na tela central", true);
                 }
             } else {
-                showToast("Meet Session não iniciada", true);
+                showToast("Meet Side Panel Client não iniciado", true);
             }
         });
     }
